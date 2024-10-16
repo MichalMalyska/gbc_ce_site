@@ -257,7 +257,7 @@ def save_course_links_to_file(course_links: list[str]) -> None:
     # dump course links to a file
     with open(DATA_PATH / "courses.txt", "w") as f:
         for course_link in course_links:
-            if "/subject/" in course_link:
+            if "/subject/" in course_link or "-program" in course_link:
                 continue
             f.write(f"{course_link}\n")
 
