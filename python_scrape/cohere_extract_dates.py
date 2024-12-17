@@ -32,12 +32,10 @@ JSON_SCHEMA = {
     "required": ["schedules"],
 }
 
-RESPONSE_FORMAT = cohere.JsonObjectResponseFormat(schema_=JSON_SCHEMA)
-
 logger = logging.getLogger(__name__)
 
 
-def extract_dates(course_sections: list[str]):
+def cohere_extract_dates(course_sections: list[str]):
     if len(course_sections) == 0:
         logger.warning("No course sections provided")
         return ""
@@ -53,12 +51,12 @@ def extract_dates(course_sections: list[str]):
         temperature=0.3,
         prompt_truncation="off",
         connectors=[],
-        response_format=RESPONSE_FORMAT,
+        response_format={"type": "json_object", "schema": JSON_SCHEMA},
     )
     return response.text
 
 
-def clean_response(response: str) -> str:
+def cohere_clean_response(response: str) -> str:
     """
     Cleans the response
 
@@ -83,4 +81,4 @@ if __name__ == "__main__":
 
     with open("data/course_data/HOSF 9489 - Preserving: Canning and Fermentation.json", "r") as f:
         course_data = json.load(f)
-    print(extract_dates(course_data["course_sections"]))
+    print(cohere_extract_dates(course_data["course_sections"]))

@@ -4,15 +4,19 @@ import os
 import time
 from ast import literal_eval
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Set, Tuple
 
 import cohere
 import requests
 from bs4 import BeautifulSoup
+from tenacity import retry, stop_after_attempt, wait_exponential
 from tqdm import tqdm
 
-from python_scrape.cohere_extract_dates import clean_response, extract_dates
+from python_scrape.cerebras_extract_dates import cerebras_clean_response, cerebras_extract_dates  # noqa
+from python_scrape.cohere_extract_dates import cohere_clean_response, cohere_extract_dates  # noqa
 from python_scrape.constants import MAIN_PAGE_URL
+from python_scrape.filters import filter_courses
+from python_scrape.utils import load_processed_courses, save_processed_courses
 
 # Configure logging
 logging.basicConfig(
@@ -274,42 +278,97 @@ def save_course_data_to_file(course_data: list[dict[str, Any]]) -> None:
             json.dump(course, f)
 
 
-def extract_dates_from_course_data(course_data: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    # Process course data to extract the dates using cohere:
-    i = 0
-    for course in tqdm(course_data, desc="Processing course data"):
-        if (
-            course.get("course_name") is not None
-            and course.get("course_code") is not None
-            and len(course["course_code"]) > 0
-            and len(course["course_sections"]) > 0
-        ):
-            logger.info(course["course_name"])
-            logger.info(course["course_link"])
+def try_extract_dates(course_sections: list[str], service: str = "cerebras") -> Optional[dict]:
+    """Try to extract dates using specified service with exponential backoff"""
 
-            try:
-                extracted_schedules = extract_dates(course["course_sections"])
-            except cohere.errors.TooManyRequestsError:
-                logger.warning("Too many requests, sleeping for 61 seconds")
-                time.sleep(61)
-                extracted_schedules = extract_dates(course["course_sections"])
-
-            cleaned_schedules = clean_response(extracted_schedules)
-            course["cleaned_response_schedules"] = cleaned_schedules
-            try:
-                schedules = json.loads(cleaned_schedules)
-            except json.JSONDecodeError:
-                logging.error(f"Error parsing schedules for {course['course_name']}")
-            try:
-                schedules = literal_eval(cleaned_schedules)
-            except ValueError:
-                logging.error(f"Error parsing schedules for {course['course_name']}")
-            course["schedules"] = schedules
-            i += 1
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=4, max=60),  # Increased multiplier for more aggressive backoff
+        reraise=True,
+    )
+    def _extract():
+        if service == "cerebras":
+            return cerebras_extract_dates(course_sections)
         else:
+            return cohere_extract_dates(course_sections)
+
+    try:
+        return _extract()
+    except Exception as e:
+        logger.error(f"Failed to extract dates using {service}: {e}")
+        return None
+
+
+def extract_dates_from_course_data(
+    course_data: list[dict[str, Any]], resume: bool = True
+) -> Tuple[list[dict[str, Any]], Set[str]]:
+    """
+    Extract dates from course data with resume capability and rate limiting
+    """
+    processed_courses = load_processed_courses(DATA_PATH) if resume else set()
+
+    for course in tqdm(course_data, desc="Processing course data"):
+        course_code = course.get("course_code", "")
+
+        # Initialize schedules if not present
+        if "schedules" not in course:
             course["schedules"] = []
 
-    return course_data
+        # Try to parse existing cleaned_response_schedules first
+        if course.get("cleaned_response_schedules") and not course["schedules"]:
+            try:
+                cleaned_schedules = json.loads(course["cleaned_response_schedules"])
+                if isinstance(cleaned_schedules, dict) and "schedules" in cleaned_schedules:
+                    course["schedules"] = cleaned_schedules["schedules"]
+                    if course_code:
+                        processed_courses.add(course_code)
+                    continue
+            except json.JSONDecodeError:
+                logger.debug(f"Failed to parse existing cleaned_response_schedules for {course['course_name']}")
+
+        # Skip if already processed and resuming
+        if resume and course_code in processed_courses:
+            logger.debug(f"Skipping already processed course: {course_code}")
+            continue
+
+        if course.get("course_name") and course_code and course.get("course_sections") and not course["schedules"]:
+            logger.info(f"Processing {course['course_name']}")
+
+            # Try Cerebras first
+            extracted_schedules = try_extract_dates(course["course_sections"], service="cerebras")
+
+            if extracted_schedules:
+                cleaned_schedules = cerebras_clean_response(extracted_schedules)
+                course["schedules"] = cleaned_schedules
+                course["cleaned_response_schedules"] = json.dumps({"schedules": cleaned_schedules})
+            else:
+                # Fallback to Cohere immediately but with same retry/backoff logic
+                cohere_response = try_extract_dates(course["course_sections"], service="cohere")
+
+                if cohere_response:
+                    try:
+                        cleaned_response = cohere_clean_response(cohere_response)
+                        course["cleaned_response_schedules"] = cleaned_response
+                        cleaned_schedules = json.loads(cleaned_response)
+                        if isinstance(cleaned_schedules, dict) and "schedules" in cleaned_schedules:
+                            course["schedules"] = cleaned_schedules["schedules"]
+                        else:
+                            logger.error(f"Invalid schedule format for {course['course_name']}")
+                            course["schedules"] = []
+                    except json.JSONDecodeError:
+                        logger.error(f"Failed to parse schedules for {course['course_name']}")
+                        course["schedules"] = []
+
+            # Mark as processed if we got here
+            if course_code:
+                processed_courses.add(course_code)
+                # Save progress periodically
+                if len(processed_courses) % 10 == 0:
+                    save_processed_courses(DATA_PATH, processed_courses)
+
+    # Save final state
+    save_processed_courses(DATA_PATH, processed_courses)
+    return course_data, processed_courses
 
 
 def main():
@@ -325,36 +384,94 @@ def main():
     save_course_links_to_file(courses_links)
     course_data = scrape_course_data(DATA_PATH / "courses.txt")
     save_course_data_to_file(course_data)
-    course_data = extract_dates_from_course_data(course_data)
+    course_data, processed = extract_dates_from_course_data(
+        course_data,
+        resume=True,  # Enable resume by default
+    )
     save_course_data_to_file(course_data)
+    logger.info(f"Processed {len(processed)} courses")
 
 
-def load_course_data(course_code: Optional[str] = None) -> list[dict[str, Any]]:
+def load_course_data(course_code: Optional[str] = None, test_mode: bool = False) -> list[dict[str, Any]]:
     """
     Load the course data from the files.
-    If course_code is provided, only load the course data for courses with that prefix.
+
+    Args:
+        course_code: If provided, only load courses with this prefix
+        test_mode: If True, only load a small subset of courses
+
+    Returns:
+        List of course data dictionaries
     """
     course_data = []
+    files_to_process = []
+
     if course_code is not None:
-        for file in os.listdir(DATA_PATH / "course_data"):
-            if file.startswith(course_code) and file.endswith(".json"):
-                with open(DATA_PATH / "course_data" / file, "r") as f:
-                    course_data.append(json.load(f))
+        files_to_process = [
+            f for f in os.listdir(DATA_PATH / "course_data") if f.startswith(course_code) and f.endswith(".json")
+        ]
     else:
-        for file in os.listdir(DATA_PATH / "course_data"):
-            if not file.startswith(" -") and file.endswith(".json"):
-                with open(DATA_PATH / "course_data" / file, "r") as f:
-                    course_data.append(json.load(f))
-    logger.info(f"Loaded {len(course_data)} course data")
+        files_to_process = [
+            f for f in os.listdir(DATA_PATH / "course_data") if not f.startswith(" -") and f.endswith(".json")
+        ]
+
+    # In test mode, only process a few files
+    if test_mode:
+        test_files = [
+            "HOSF 9387 - Pizza.json",
+            "HOSF 9375 - Methods for Cheese Aging.json",
+            "ART 9082 - Drawing Fundamentals 2.json",
+            "ARCH 9018 - Architectural Design Studio 2.json",
+        ]
+        files_to_process = [f for f in files_to_process if f in test_files]
+
+    for file in files_to_process:
+        with open(DATA_PATH / "course_data" / file, "r") as f:
+            course_data.append(json.load(f))
+
+    logger.info(f"Loaded {len(course_data)} course data" + (" (TEST MODE)" if test_mode else ""))
     return course_data
+
+
+def find_courses(
+    subject: Optional[str] = None,
+    day: Optional[str] = None,
+    after_time: Optional[str] = None,
+    before_time: Optional[str] = None,
+) -> list[dict[str, Any]]:
+    """
+    Load and filter courses based on criteria
+
+    Args:
+        subject: Subject keyword to search for
+        day: Day of week to filter by
+        after_time: Only show courses starting after this time (24h format HH:MM)
+        before_time: Only show courses starting before this time (24h format HH:MM)
+
+    Returns:
+        List of matching courses
+    """
+    courses = load_course_data()
+    return filter_courses(courses, subject=subject, day=day, after_time=after_time, before_time=before_time)
 
 
 if __name__ == "__main__":
     try:
-        # main()
-        course_data = load_course_data(course_code="HOSF")
-        course_data = extract_dates_from_course_data(course_data)
-        save_course_data_to_file(course_data)
+        # Add argument parsing
+        import argparse
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--test", action="store_true", help="Run in test mode with small dataset")
+        args = parser.parse_args()
+
+        # Load courses (test mode if specified)
+        course_data = load_course_data(test_mode=args.test)
+        updated_data, processed = extract_dates_from_course_data(
+            course_data,
+            resume=True,
+        )
+        save_course_data_to_file(updated_data)
+        logger.info(f"Processed {len(processed)} courses")
     except Exception as e:
         logger.error(f"Error: {e}")
         import pdb
