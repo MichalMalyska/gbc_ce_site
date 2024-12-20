@@ -14,9 +14,9 @@ api_key = os.getenv("CEREBRAS_API_KEY")
 # Updated to use the current instructor API
 client = instructor.patch(
     Cerebras(
-        api_key=os.environ.get("CEREBRAS_API_KEY"),
-    )
-)
+        api_key=api_key,
+    )  # type: ignore
+)  # type: ignore
 
 
 class Schedule(BaseModel):
@@ -39,31 +39,44 @@ def cerebras_extract_dates(course_sections: list[str]) -> Union[ScheduleList, No
         logger.warning("No course sections provided")
         return None
 
-    # Standardize the prompt to enforce consistent formatting
     prompt = f"""
-    Extract and return in json format all schedule information from the following input.
-    For each schedule entry, provide:
-    * start_date: in YYYY-MM-DD format
-    * end_date: in YYYY-MM-DD format
-    * day_or_days_of_week: Full day names separated by commas (e.g., "Monday, Wednesday")
-    * start_time: in 12-hour format with AM/PM (e.g., "9:00 AM")
-    * end_time: in 12-hour format with AM/PM (e.g., "5:00 PM")
+    Extract schedule information from this input and return it in JSON format.
+    ONLY return the JSON object, no other text.
+    
+    Required format:
+    {{
+        "schedules": [
+            {{
+                "start_date": "YYYY-MM-DD",
+                "end_date": "YYYY-MM-DD",
+                "day_or_days_of_week": "Full day names",
+                "start_time": "HH:MM AM/PM",
+                "end_time": "HH:MM AM/PM"
+            }}
+        ]
+    }}
     
     Input text:
     {course_sections}
-    
-    If any information is missing, return an empty string for that field.
     """
 
     try:
         chat_completion = client.chat.completions.create(
             model="llama3.1-8b",
-            response_model=ScheduleList,
             messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,  # Lower temperature for more consistent formatting
         )
-        return chat_completion
+        response_text = chat_completion.choices[0].message.content
+
+        # Clean up the response text
+        response_text = response_text.replace("```json", "").replace("```", "").strip()
+
+        # Try to parse and validate
+        return ScheduleList.model_validate_json(response_text)
     except Exception as e:
         logger.error(f"Error extracting dates: {e}")
+        if response_text:
+            logger.error(f"Raw response: {response_text}")
         return None
 
 

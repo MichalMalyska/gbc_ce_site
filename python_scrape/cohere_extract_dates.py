@@ -7,8 +7,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 api_key = os.getenv("COHERE_API_KEY")
+
 co = cohere.Client(
-    api_key=api_key,
+    api_key=api_key,  # type: ignore
 )
 
 JSON_SCHEMA = {
@@ -40,18 +41,31 @@ def cohere_extract_dates(course_sections: list[str]):
         logger.warning("No course sections provided")
         return ""
     prompt = f"""
-    I need you to extract and return in json format all of: \n* start date\n* end date\n* day / days of week\n* start time\n* end time\nFrom the following input:
+    Extract and return in json format all schedule information from the following input.
+    The response must be in this exact format:
+    {{
+        "schedules": [
+            {{
+                "start_date": "YYYY-MM-DD",
+                "end_date": "YYYY-MM-DD",
+                "day_or_days_of_week": "Full day names",
+                "start_time": "HH:MM AM/PM",
+                "end_time": "HH:MM AM/PM"
+            }}
+        ]
+    }}
+    
+    Input text:
     {course_sections}
-    If some information is missing, return an empty string for that field. Make sure to include AM / PM in the time fields.
     """
 
     response = co.chat(
         model="command-r-08-2024",
         message=prompt,
-        temperature=0.3,
+        temperature=0.1,
         prompt_truncation="off",
         connectors=[],
-        response_format={"type": "json_object", "schema": JSON_SCHEMA},
+        stream=False,
     )
     return response.text
 
