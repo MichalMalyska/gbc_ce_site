@@ -340,3 +340,7 @@ dist
 # Finder (MacOS) folder config
 .DS_Store
 *.lock
+
+# Environment files
+.env*
+!.env.example
