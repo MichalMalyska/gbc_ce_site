@@ -12,17 +12,19 @@ export function useDataSource() {
         setTimeout(() => {
           let filtered = testCourses;
           
-          if (filters.delivery_type) {
+          if (filters.prefix) {
             filtered = filtered.filter(c => 
-              c.course_delivery_type?.toLowerCase() === filters.delivery_type?.toLowerCase()
+              c.course_prefix === filters.prefix
             );
           }
           
           if (filters.search) {
-            const searchLower = filters.search.toLowerCase();
+            const searchTerms = filters.search.toLowerCase().split(' ').filter(Boolean);
             filtered = filtered.filter(c => 
-              c.course_code.toLowerCase().includes(searchLower) ||
-              c.course_name.toLowerCase().includes(searchLower)
+              searchTerms.every(term =>
+                c.course_code.toLowerCase().includes(term) ||
+                c.course_name.toLowerCase().includes(term)
+              )
             );
           }
 

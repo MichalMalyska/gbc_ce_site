@@ -18,37 +18,47 @@ class CourseViewSet(viewsets.ReadOnlyModelViewSet):
         # Filter by search term
         search = self.request.query_params.get("search", None)
         if search:
-            queryset = queryset.filter(
-                Q(course_code__icontains=search)
-                | Q(course_name__icontains=search)
-                | Q(course_prefix__icontains=search)
-            )
+            # Split search terms and create Q objects for each term
+            terms = search.split()
+            query = Q()
+            for term in terms:
+                term_query = Q(course_code__icontains=term) | Q(
+                    course_name__icontains=term
+                )
+                query &= term_query
+            queryset = queryset.filter(query)
+
+        # Filter by prefix (department)
+        prefix = self.request.query_params.get("prefix", None)
+        if prefix:
+            queryset = queryset.filter(course_prefix=prefix)
 
         # Filter by day of week
-        day = self.request.query_params.get("day", None)
-        if day:
-            queryset = queryset.filter(schedules__day_of_week=day)
+        days = self.request.query_params.getlist("day")
+        if days:
+            day_query = Q()
+            for day in days:
+                day_query |= Q(schedules__day_of_week=day)
+            queryset = queryset.filter(day_query)
 
-        # Filter by time
+        # Filter by time of day
         start_after = self.request.query_params.get("start_after", None)
         if start_after:
             queryset = queryset.filter(schedules__start_time__gte=start_after)
 
         end_before = self.request.query_params.get("end_before", None)
         if end_before:
-            queryset = queryset.filter(schedules__end_time__lte=end_before)
-
-        # Filter courses with schedules
-        has_schedules = self.request.query_params.get("has_schedules", None)
-        if has_schedules == "true":
-            queryset = queryset.annotate(schedule_count=Count("schedules")).filter(
-                schedule_count__gt=0
-            )
+            queryset = queryset.filter(schedules__start_time__lte=end_before)
 
         # Filter by delivery type
         delivery_type = self.request.query_params.get("delivery_type", None)
         if delivery_type:
             queryset = queryset.filter(course_delivery_type__iexact=delivery_type)
+
+        # Filter for courses with schedules
+        has_schedules = self.request.query_params.get("has_schedules", None)
+        if has_schedules:
+            queryset = queryset.filter(schedules__isnull=False)
 
         return queryset.distinct()
 

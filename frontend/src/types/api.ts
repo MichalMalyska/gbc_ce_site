@@ -31,6 +31,7 @@ export interface PaginatedResponse<T> {
 
 export interface CourseFilters {
   search?: string;
+  prefix?: string;
   days?: string[];
   start_after?: string;
   end_before?: string;

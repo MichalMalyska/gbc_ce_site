@@ -39,7 +39,8 @@ export default function Home() {
       }
 
       return fetchCourses({
-        search: selectedPrefix ? `${selectedPrefix} ${search}` : search,
+        search: search,
+        prefix: selectedPrefix,
         days: selectedDays,
         start_after: selectedTimeOfDay === 'evening' ? '17:00' : undefined,
         end_before: selectedTimeOfDay === 'morning' ? '12:00' : 
