@@ -344,3 +344,4 @@ dist
 # Environment files
 .env*
 !.env.example
+secrets/*

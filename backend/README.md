@@ -34,6 +34,7 @@ python manage.py migrate
 ```
 
 ### Development
+
 ```bash
 python manage.py runserver
 ```
