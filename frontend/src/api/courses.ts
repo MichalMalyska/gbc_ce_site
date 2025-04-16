@@ -19,6 +19,9 @@ export const fetchCourses = async (filters: CourseFilters): Promise<PaginatedRes
   if (filters.start_after) params.append('start_after', filters.start_after);
   if (filters.end_before) params.append('end_before', filters.end_before);
   if (filters.delivery_type) params.append('delivery_type', filters.delivery_type);
+  if (filters.start_date_after) params.append('start_date_after', filters.start_date_after);
+  if (filters.end_date_before) params.append('end_date_before', filters.end_date_before);
+  if (filters.ordering) params.append('ordering', filters.ordering);
 
   params.append('has_schedules', 'true');
 

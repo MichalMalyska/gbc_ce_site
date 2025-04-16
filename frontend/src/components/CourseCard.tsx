@@ -1,17 +1,38 @@
 import { Course, Schedule } from '@/types/api';
-import { format } from 'date-fns';
+import { format, isAfter, isBefore, isEqual, parseISO } from 'date-fns';
 
 interface CourseCardProps {
   course: Course;
   selectedDays: string[];
+  startDateFilter: string;
+  endDateFilter: string;
 }
 
 // Helper function to filter and group schedules
-function groupSchedules(schedules: Schedule[], selectedDays: string[]) {
+function groupSchedules(
+  schedules: Schedule[],
+  selectedDays: string[],
+  startDateFilter: string,
+  endDateFilter: string
+) {
   // First, filter schedules to only include selected days
-  const filteredSchedules = selectedDays.length > 0
-    ? schedules.filter(s => selectedDays.includes(s.day_of_week))
-    : schedules;
+  const filterStartDate = startDateFilter ? parseISO(startDateFilter) : null;
+  const filterEndDate = endDateFilter ? parseISO(endDateFilter) : null;
+
+  const filteredSchedules = schedules.filter(s => {
+    // Day of week filter
+    const dayMatch = selectedDays.length === 0 || selectedDays.includes(s.day_of_week);
+    if (!dayMatch) return false;
+
+    // Date range filter
+    const scheduleStartDate = parseISO(s.start_date);
+    const scheduleEndDate = parseISO(s.end_date);
+
+    const startMatch = !filterStartDate || isAfter(scheduleStartDate, filterStartDate) || isEqual(scheduleStartDate, filterStartDate);
+    const endMatch = !filterEndDate || isBefore(scheduleEndDate, filterEndDate) || isEqual(scheduleEndDate, filterEndDate);
+
+    return startMatch && endMatch;
+  });
 
   const groups = new Map<string, Schedule[]>();
 
@@ -93,10 +114,15 @@ function getDeliveryTypeBadge(deliveryType: string | null) {
   }
 }
 
-export function CourseCard({ course, selectedDays }: CourseCardProps) {
-  const groupedSchedules = groupSchedules(course.schedules, selectedDays);
+export function CourseCard({ course, selectedDays, startDateFilter, endDateFilter }: CourseCardProps) {
+  const groupedSchedules = groupSchedules(
+    course.schedules,
+    selectedDays,
+    startDateFilter,
+    endDateFilter
+  );
 
-  // Don't render the card if no schedules match the selected days
+  // Don't render the card if no schedules match the selected days AND dates
   if (groupedSchedules.length === 0) return null;
 
   return (
@@ -122,8 +148,8 @@ export function CourseCard({ course, selectedDays }: CourseCardProps) {
                 <span className="w-24 flex-shrink-0">{formatDays(scheduleGroup)}</span>
                 {formatTimeDisplay(scheduleGroup[0])}
                 <span className="text-xs">
-                  {format(new Date(scheduleGroup[0].start_date), 'MMM d')} -
-                  {format(new Date(scheduleGroup[0].end_date), 'MMM d')}
+                  {format(parseISO(scheduleGroup[0].start_date), 'MMM d')} -
+                  {format(parseISO(scheduleGroup[0].end_date), 'MMM d')}
                 </span>
               </div>
             ))}

@@ -16,6 +16,11 @@ export default function Home() {
   const [selectedPrefix, setSelectedPrefix] = useState('');
   const [selectedDeliveryType, setSelectedDeliveryType] = useState('');
 
+  // New state for date filtering and sorting
+  const [startDateAfter, setStartDateAfter] = useState(''); // YYYY-MM-DD
+  const [endDateBefore, setEndDateBefore] = useState('');   // YYYY-MM-DD
+  const [ordering, setOrdering] = useState('course_code'); // Default sort
+
   // Effect to initialize state from URL query parameters on mount
   useEffect(() => {
     const { query } = router;
@@ -24,6 +29,9 @@ export default function Home() {
     setSelectedTimeOfDay(query.timeOfDay ? String(query.timeOfDay) : '');
     setSelectedPrefix(query.prefix ? String(query.prefix) : '');
     setSelectedDeliveryType(query.deliveryType ? String(query.deliveryType) : '');
+    setStartDateAfter(query.startDateAfter ? String(query.startDateAfter) : '');
+    setEndDateBefore(query.endDateBefore ? String(query.endDateBefore) : '');
+    setOrdering(query.ordering ? String(query.ordering) : 'course_code');
     // We only want this to run once on mount, based on initial query params.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.isReady]); // Run when router is ready and query is available
@@ -42,6 +50,9 @@ export default function Home() {
     if (selectedTimeOfDay) newQuery.timeOfDay = selectedTimeOfDay;
     if (selectedPrefix) newQuery.prefix = selectedPrefix;
     if (selectedDeliveryType) newQuery.deliveryType = selectedDeliveryType;
+    if (startDateAfter) newQuery.startDateAfter = startDateAfter;
+    if (endDateBefore) newQuery.endDateBefore = endDateBefore;
+    if (ordering && ordering !== 'course_code') newQuery.ordering = ordering; // Only add if not default
 
     // Only push if the query has actually changed
     // Simple string comparison might not be robust for object/array order, but good enough here
@@ -56,11 +67,11 @@ export default function Home() {
         );
     }
 
-  }, [search, selectedDays, selectedTimeOfDay, selectedPrefix, selectedDeliveryType, router]);
+  }, [search, selectedDays, selectedTimeOfDay, selectedPrefix, selectedDeliveryType, startDateAfter, endDateBefore, ordering, router]);
 
   // Check if any filter is active
   const hasActiveFilters = Boolean(
-    search || selectedDays.length > 0 || selectedPrefix || selectedDeliveryType || selectedTimeOfDay
+    search || selectedDays.length > 0 || selectedPrefix || selectedDeliveryType || selectedTimeOfDay || startDateAfter || endDateBefore
   );
 
   const { fetchCourses, isTestMode } = useDataSource();
@@ -72,6 +83,9 @@ export default function Home() {
       selectedTimeOfDay,
       selectedPrefix,
       selectedDeliveryType,
+      startDateAfter,
+      endDateBefore,
+      ordering,
     }],
     queryFn: () => {
       if (!hasActiveFilters) {
@@ -91,6 +105,9 @@ export default function Home() {
         end_before: selectedTimeOfDay === 'morning' ? '12:00' :
           selectedTimeOfDay === 'afternoon' ? '17:00' : undefined,
         delivery_type: selectedDeliveryType,
+        start_date_after: startDateAfter,
+        end_date_before: endDateBefore,
+        ordering: ordering,
       });
     },
     enabled: hasActiveFilters || Object.keys(router.query).length > 0,
@@ -124,6 +141,12 @@ export default function Home() {
             onPrefixChange={setSelectedPrefix}
             selectedDeliveryType={selectedDeliveryType}
             onDeliveryTypeChange={setSelectedDeliveryType}
+            startDateAfter={startDateAfter}
+            onStartDateChange={setStartDateAfter}
+            endDateBefore={endDateBefore}
+            onEndDateChange={setEndDateBefore}
+            ordering={ordering}
+            onOrderingChange={setOrdering}
           />
         </div>
 
@@ -142,7 +165,13 @@ export default function Home() {
           <>
             <div className="bg-card dark:bg-card-dark rounded-lg shadow-sm overflow-hidden mb-8">
               {data?.results.map((course) => (
-                <CourseCard key={course.id} course={course} selectedDays={selectedDays} />
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  selectedDays={selectedDays}
+                  startDateFilter={startDateAfter}
+                  endDateFilter={endDateBefore}
+                />
               ))}
             </div>
 

@@ -10,6 +10,12 @@ interface FiltersProps {
   onPrefixChange: (prefix: string) => void;
   selectedDeliveryType: string;
   onDeliveryTypeChange: (type: string) => void;
+  startDateAfter: string;
+  onStartDateChange: (date: string) => void;
+  endDateBefore: string;
+  onEndDateChange: (date: string) => void;
+  ordering: string;
+  onOrderingChange: (order: string) => void;
 }
 
 const DAYS_OF_WEEK = [
@@ -35,8 +41,18 @@ const DELIVERY_TYPES = [
   { label: 'On Campus', value: 'on campus' },
 ];
 
+const SORTING_OPTIONS = [
+  { label: 'Course Code (A-Z)', value: 'course_code' },
+  { label: 'Course Code (Z-A)', value: '-course_code' },
+  { label: 'Course Name (A-Z)', value: 'course_name' },
+  { label: 'Course Name (Z-A)', value: '-course_name' },
+  { label: 'Start Date (Earliest)', value: 'schedules__start_date' },
+  { label: 'Start Date (Latest)', value: '-schedules__start_date' },
+];
+
 const selectClassName = "mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-accent focus:ring-accent focus:ring-opacity-50 bg-white dark:bg-slate-700 text-foreground dark:text-foreground-dark";
 const labelClassName = "text-sm font-medium text-muted-foreground dark:text-muted-foreground-dark mb-1";
+const dateInputClassName = "mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-accent focus:ring-accent focus:ring-opacity-50 bg-white dark:bg-slate-700 text-foreground dark:text-foreground-dark";
 
 export function Filters({
   selectedDays,
@@ -47,6 +63,12 @@ export function Filters({
   onPrefixChange,
   selectedDeliveryType,
   onDeliveryTypeChange,
+  startDateAfter,
+  onStartDateChange,
+  endDateBefore,
+  onEndDateChange,
+  ordering,
+  onOrderingChange,
 }: FiltersProps) {
   const { data: prefixes } = useQuery({
     queryKey: ['prefixes'],
@@ -128,6 +150,44 @@ export function Filters({
           {DELIVERY_TYPES.map((type) => (
             <option key={type.value} value={type.value}>
               {type.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Start Date Filter */}
+      <div className="flex flex-col flex-1 min-w-[150px]">
+        <label className={labelClassName}>Start After</label>
+        <input
+          type="date"
+          value={startDateAfter}
+          onChange={(e) => onStartDateChange(e.target.value)}
+          className={dateInputClassName}
+        />
+      </div>
+
+      {/* End Date Filter */}
+      <div className="flex flex-col flex-1 min-w-[150px]">
+        <label className={labelClassName}>End Before</label>
+        <input
+          type="date"
+          value={endDateBefore}
+          onChange={(e) => onEndDateChange(e.target.value)}
+          className={dateInputClassName}
+        />
+      </div>
+
+      {/* Sort Order */}
+      <div className="flex flex-col flex-1 min-w-[200px]">
+        <label className={labelClassName}>Sort By</label>
+        <select
+          value={ordering}
+          onChange={(e) => onOrderingChange(e.target.value)}
+          className={selectClassName}
+        >
+          {SORTING_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
             </option>
           ))}
         </select>
