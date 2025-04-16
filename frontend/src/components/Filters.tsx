@@ -68,8 +68,8 @@ export function Filters({
         <label className={labelClassName}>Days</label>
         <div className="mt-1 grid grid-cols-2 gap-2">
           {DAYS_OF_WEEK.map((day) => (
-            <label 
-              key={day} 
+            <label
+              key={day}
               className="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750 p-1.5 rounded cursor-pointer"
             >
               <input
@@ -134,4 +134,4 @@ export function Filters({
       </div>
     </div>
   );
-} 
+}

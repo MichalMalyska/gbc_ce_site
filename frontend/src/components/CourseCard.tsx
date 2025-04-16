@@ -14,14 +14,14 @@ function groupSchedules(schedules: Schedule[], selectedDays: string[]) {
     : schedules;
 
   const groups = new Map<string, Schedule[]>();
-  
+
   filteredSchedules.forEach(schedule => {
     const timeKey = schedule.start_time && schedule.end_time
       ? `${schedule.start_time}-${schedule.end_time}`
       : 'no-time';
     const dateKey = `${schedule.start_date}-${schedule.end_date}`;
     const key = `${timeKey}-${dateKey}`;
-    
+
     if (!groups.has(key)) {
       groups.set(key, []);
     }
@@ -39,10 +39,10 @@ function groupSchedules(schedules: Schedule[], selectedDays: string[]) {
 function formatDays(schedules: Schedule[]) {
   // Sort days to ensure consistent order
   const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const sortedSchedules = [...schedules].sort((a, b) => 
+  const sortedSchedules = [...schedules].sort((a, b) =>
     dayOrder.indexOf(a.day_of_week) - dayOrder.indexOf(b.day_of_week)
   );
-  
+
   const days = sortedSchedules.map(s => s.day_of_week.slice(0, 3));
   if (days.length === 1) return days[0];
   if (days.length === 2) return `${days[0]} & ${days[1]}`;
@@ -70,7 +70,7 @@ function getDeliveryTypeBadge(deliveryType: string | null) {
   if (!deliveryType) return null;
 
   const baseClasses = "text-xs px-2 py-0.5 rounded-full font-medium";
-  
+
   switch (deliveryType.toLowerCase()) {
     case 'online':
       return (
@@ -105,9 +105,9 @@ export function CourseCard({ course, selectedDays }: CourseCardProps) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-medium truncate">
-              <a 
-                href={course.course_link || '#'} 
-                target="_blank" 
+              <a
+                href={course.course_link || '#'}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
               >
@@ -142,4 +142,4 @@ export function CourseCard({ course, selectedDays }: CourseCardProps) {
       </div>
     </div>
   );
-} 
+}

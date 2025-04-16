@@ -54,7 +54,7 @@ def cohere_extract_dates(course_sections: list[str]):
             }}
         ]
     }}
-    
+
     Input text:
     {course_sections}
     """

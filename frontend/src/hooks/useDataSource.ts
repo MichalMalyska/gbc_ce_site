@@ -11,16 +11,16 @@ export function useDataSource() {
       return new Promise((resolve) => {
         setTimeout(() => {
           let filtered = testCourses;
-          
+
           if (filters.prefix) {
-            filtered = filtered.filter(c => 
+            filtered = filtered.filter(c =>
               c.course_prefix === filters.prefix
             );
           }
-          
+
           if (filters.search) {
             const searchTerms = filters.search.toLowerCase().split(' ').filter(Boolean);
-            filtered = filtered.filter(c => 
+            filtered = filtered.filter(c =>
               searchTerms.every(term =>
                 c.course_code.toLowerCase().includes(term) ||
                 c.course_name.toLowerCase().includes(term)
@@ -29,7 +29,7 @@ export function useDataSource() {
           }
 
           if (filters.day) {
-            filtered = filtered.filter(c => 
+            filtered = filtered.filter(c =>
               c.schedules.some(s => s.day_of_week === filters.day)
             );
           }
@@ -52,4 +52,4 @@ export function useDataSource() {
     fetchCourses,
     isTestMode: useTestData,
   };
-} 
+}

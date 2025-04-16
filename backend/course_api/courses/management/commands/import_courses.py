@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 from courses.models import Course, Schedule
 from django.core.management import call_command
@@ -11,7 +10,6 @@ from sqlalchemy.orm import joinedload, sessionmaker
 
 from python_scrape.db.database import Base
 from python_scrape.db.database import Course as SACourse
-from python_scrape.db.database import Schedule as SASchedule
 
 
 class Command(BaseCommand):
@@ -56,7 +54,7 @@ class Command(BaseCommand):
                 batch_size = 100
                 for i in range(0, total_courses, batch_size):
                     batch = query.slice(i, i + batch_size).all()
-                    self.stdout.write(f"Processing batch {i//batch_size + 1}...")
+                    self.stdout.write(f"Processing batch {i // batch_size + 1}...")
 
                     for sa_course in batch:
                         course = Course.objects.create(

@@ -42,7 +42,7 @@ def cerebras_extract_dates(course_sections: list[str]) -> Union[ScheduleList, No
     prompt = f"""
     Extract schedule information from this input and return it in JSON format.
     ONLY return the JSON object, no other text.
-    
+
     Required format:
     {{
         "schedules": [
@@ -55,7 +55,7 @@ def cerebras_extract_dates(course_sections: list[str]) -> Union[ScheduleList, No
             }}
         ]
     }}
-    
+
     Input text:
     {course_sections}
     """

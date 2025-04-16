@@ -12,14 +12,14 @@ const api = axios.create({
 
 export const fetchCourses = async (filters: CourseFilters): Promise<PaginatedResponse<Course>> => {
   const params = new URLSearchParams();
-  
+
   if (filters.search) params.append('search', filters.search);
   if (filters.prefix) params.append('prefix', filters.prefix);
   if (filters.days?.length) filters.days.forEach(day => params.append('day', day));
   if (filters.start_after) params.append('start_after', filters.start_after);
   if (filters.end_before) params.append('end_before', filters.end_before);
   if (filters.delivery_type) params.append('delivery_type', filters.delivery_type);
-  
+
   params.append('has_schedules', 'true');
 
   const { data } = await api.get<PaginatedResponse<Course>>(`/courses/?${params}`);
@@ -29,4 +29,4 @@ export const fetchCourses = async (filters: CourseFilters): Promise<PaginatedRes
 export const fetchPrefixes = async (): Promise<string[]> => {
   const { data } = await api.get<string[]>('/courses/prefixes/');
   return data;
-}; 
+};

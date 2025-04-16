@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 from datetime import datetime, time
 from pathlib import Path
 from typing import Optional
@@ -110,7 +109,14 @@ def save_failed_courses(failed_courses: list[dict]) -> None:
 
     try:
         with open(output_file, "w") as f:
-            json.dump({"timestamp": datetime.now().isoformat(), "failed_courses": failed_courses}, f, indent=2)
+            json.dump(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "failed_courses": failed_courses,
+                },
+                f,
+                indent=2,
+            )
         logger.info(f"Saved failed courses report to {output_file}")
     except Exception as e:
         logger.error(f"Error saving failed courses report: {e}")
@@ -252,7 +258,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", action="store_true", help="Run in test mode with only 5 files")
-    parser.add_argument("--reprocess", action="store_true", help="Reprocess courses with missing schedules")
+    parser.add_argument(
+        "--reprocess",
+        action="store_true",
+        help="Reprocess courses with missing schedules",
+    )
     args = parser.parse_args()
 
     # Load data from JSON files

@@ -21,7 +21,9 @@ class Course(models.Model):
 
 
 class Schedule(models.Model):
-    course = models.ForeignKey(Course, related_name="schedules", on_delete=models.CASCADE)
+    course = models.ForeignKey(
+        Course, related_name="schedules", on_delete=models.CASCADE
+    )
     start_date = models.DateField()
     end_date = models.DateField()
     day_of_week = models.CharField(max_length=50)

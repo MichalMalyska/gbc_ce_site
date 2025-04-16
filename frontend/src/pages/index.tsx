@@ -21,10 +21,10 @@ export default function Home() {
   const { fetchCourses, isTestMode } = useDataSource();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['courses', { 
-      search, 
-      selectedDays, 
-      selectedTimeOfDay, 
+    queryKey: ['courses', {
+      search,
+      selectedDays,
+      selectedTimeOfDay,
       selectedPrefix,
       selectedDeliveryType,
     }],
@@ -43,7 +43,7 @@ export default function Home() {
         prefix: selectedPrefix,
         days: selectedDays,
         start_after: selectedTimeOfDay === 'evening' ? '17:00' : undefined,
-        end_before: selectedTimeOfDay === 'morning' ? '12:00' : 
+        end_before: selectedTimeOfDay === 'morning' ? '12:00' :
           selectedTimeOfDay === 'afternoon' ? '17:00' : undefined,
         delivery_type: selectedDeliveryType,
       });
@@ -65,9 +65,9 @@ export default function Home() {
               <ThemeToggle />
             </div>
           </h1>
-          
+
           <SearchBar value={search} onChange={setSearch} />
-          
+
           <Filters
             selectedDays={selectedDays}
             onDaysChange={setSelectedDays}

@@ -36,4 +36,4 @@ export interface CourseFilters {
   start_after?: string;
   end_before?: string;
   delivery_type?: string;
-} 
+}

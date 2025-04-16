@@ -137,4 +137,4 @@ export const testCourses: Course[] = [
       }
     ]
   }
-]; 
+];
