@@ -4,18 +4,63 @@ import { SearchBar } from '@/components/SearchBar';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useDataSource } from '@/hooks/useDataSource';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
 
 export default function Home() {
+  const router = useRouter();
+
   const [search, setSearch] = useState('');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [selectedTimeOfDay, setSelectedTimeOfDay] = useState('');
   const [selectedPrefix, setSelectedPrefix] = useState('');
   const [selectedDeliveryType, setSelectedDeliveryType] = useState('');
 
+  // Effect to initialize state from URL query parameters on mount
+  useEffect(() => {
+    const { query } = router;
+    setSearch(query.search ? String(query.search) : '');
+    setSelectedDays(query.days ? (Array.isArray(query.days) ? query.days : [query.days]) : []);
+    setSelectedTimeOfDay(query.timeOfDay ? String(query.timeOfDay) : '');
+    setSelectedPrefix(query.prefix ? String(query.prefix) : '');
+    setSelectedDeliveryType(query.deliveryType ? String(query.deliveryType) : '');
+    // We only want this to run once on mount, based on initial query params.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady]); // Run when router is ready and query is available
+
+  // Effect to update URL query parameters when filters change
+  useEffect(() => {
+    // Only update URL if router is ready and state is not matching initial empty state anymore
+    // or if query params actually exist from the URL initially
+    if (!router.isReady) return;
+
+    const currentQuery = router.query;
+    const newQuery: Record<string, string | string[]> = {};
+
+    if (search) newQuery.search = search;
+    if (selectedDays.length > 0) newQuery.days = selectedDays;
+    if (selectedTimeOfDay) newQuery.timeOfDay = selectedTimeOfDay;
+    if (selectedPrefix) newQuery.prefix = selectedPrefix;
+    if (selectedDeliveryType) newQuery.deliveryType = selectedDeliveryType;
+
+    // Only push if the query has actually changed
+    // Simple string comparison might not be robust for object/array order, but good enough here
+    if (JSON.stringify(currentQuery) !== JSON.stringify(newQuery)) {
+        router.replace(
+            {
+                pathname: router.pathname,
+                query: newQuery,
+            },
+            undefined,
+            { shallow: true } // Use shallow routing to prevent re-running data fetching logic unnecessarily
+        );
+    }
+
+  }, [search, selectedDays, selectedTimeOfDay, selectedPrefix, selectedDeliveryType, router]);
+
   // Check if any filter is active
   const hasActiveFilters = Boolean(
-    search || selectedDays.length > 0 || selectedPrefix || selectedDeliveryType
+    search || selectedDays.length > 0 || selectedPrefix || selectedDeliveryType || selectedTimeOfDay
   );
 
   const { fetchCourses, isTestMode } = useDataSource();
@@ -48,6 +93,8 @@ export default function Home() {
         delivery_type: selectedDeliveryType,
       });
     },
+    enabled: hasActiveFilters || Object.keys(router.query).length > 0,
+    placeholderData: (previousData) => previousData,
   });
 
   return (
@@ -80,7 +127,8 @@ export default function Home() {
           />
         </div>
 
-        {!hasActiveFilters ? (
+        {/* Show initial message only if no filters are active AND no query params exist */}
+        {!hasActiveFilters && Object.keys(router.query).length === 0 ? (
           <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
             <p className="text-gray-500 dark:text-gray-400">
               Select a department or enter search terms to view courses

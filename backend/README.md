@@ -25,21 +25,14 @@ Django REST API for serving GBC continuing education course data.
 ### Installation
 
 ```bash
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
 # Run migrations
-python manage.py migrate
+uv run python manage.py migrate
 ```
 
 ### Development
 
 ```bash
-python manage.py runserver
+uv run python manage.py runserver
 ```
 
 The API will be available at `http://localhost:8000/api/`
