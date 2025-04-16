@@ -28,9 +28,9 @@ export function useDataSource() {
             );
           }
 
-          if (filters.day) {
+          if (filters.days && filters.days.length > 0) {
             filtered = filtered.filter(c =>
-              c.schedules.some(s => s.day_of_week === filters.day)
+              c.schedules.some(s => filters.days!.includes(s.day_of_week))
             );
           }
 

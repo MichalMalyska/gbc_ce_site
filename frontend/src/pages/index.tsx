@@ -7,6 +7,30 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 
+// Helper function to create a consistent query string representation
+const normalizeQuery = (query: Record<string, string | string[] | undefined>): string => {
+  const params = new URLSearchParams();
+  Object.keys(query).sort().forEach(key => {
+    // Ignore nextjs internal params
+    if (key.startsWith('__next')) return;
+
+    const value = query[key];
+    if (value !== undefined && value !== null) { // Ensure value exists
+      if (Array.isArray(value)) {
+        if (value.length > 0) {
+          // Sort array values for consistent order
+          [...value].sort().forEach(item => params.append(key, item));
+        }
+      } else if (String(value).length > 0) {
+         params.append(key, String(value));
+      }
+    }
+  });
+  // Exclude common pagination/internal params if necessary, ensure stable sort
+  params.sort();
+  return params.toString(); // Returns sorted, encoded string like "a=1&b=2"
+};
+
 export default function Home() {
   const router = useRouter();
 
@@ -38,8 +62,6 @@ export default function Home() {
 
   // Effect to update URL query parameters when filters change
   useEffect(() => {
-    // Only update URL if router is ready and state is not matching initial empty state anymore
-    // or if query params actually exist from the URL initially
     if (!router.isReady) return;
 
     const currentQuery = router.query;
@@ -54,20 +76,23 @@ export default function Home() {
     if (endDateBefore) newQuery.endDateBefore = endDateBefore;
     if (ordering && ordering !== 'course_code') newQuery.ordering = ordering; // Only add if not default
 
-    // Only push if the query has actually changed
-    // Simple string comparison might not be robust for object/array order, but good enough here
-    if (JSON.stringify(currentQuery) !== JSON.stringify(newQuery)) {
+    // Use the normalized comparison
+    const currentQueryString = normalizeQuery(currentQuery);
+    const newQueryString = normalizeQuery(newQuery);
+
+    if (currentQueryString !== newQueryString) {
+        const urlObject = {
+            pathname: router.pathname,
+            query: newQuery,
+        };
         router.replace(
-            {
-                pathname: router.pathname,
-                query: newQuery,
-            },
+            urlObject,
             undefined,
             { shallow: true } // Use shallow routing to prevent re-running data fetching logic unnecessarily
         );
     }
 
-  }, [search, selectedDays, selectedTimeOfDay, selectedPrefix, selectedDeliveryType, startDateAfter, endDateBefore, ordering, router]);
+  }, [search, selectedDays, selectedTimeOfDay, selectedPrefix, selectedDeliveryType, startDateAfter, endDateBefore, ordering, router.isReady, router.pathname, router.query]);
 
   // Check if any filter is active
   const hasActiveFilters = Boolean(

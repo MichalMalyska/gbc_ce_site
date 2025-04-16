@@ -1,5 +1,6 @@
-from pathlib import Path
 import os
+from pathlib import Path
+
 import dj_database_url  # Import dj-database-url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -70,9 +71,6 @@ DATABASES = {
         conn_max_age=600,  # Optional: connection pooling
     )
 }
-# Optional: Require SSL for Postgres in production
-# if DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql' and not DEBUG:
-#    DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -118,3 +116,27 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
 }
+
+# Optional: Require SSL for Postgres in production
+# if DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql' and not DEBUG:
+#    DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
+
+# --- SQL Query Logging (DEBUGGING) ---
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,  # Prevent duplicate logging if root logger is configured
+        },
+    },
+}
+# --- END SQL Query Logging --- #

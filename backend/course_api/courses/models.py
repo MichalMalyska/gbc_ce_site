@@ -18,6 +18,7 @@ class Course(models.Model):
 
     class Meta:
         ordering = ["course_prefix", "course_number"]
+        db_table = "courses"
 
 
 class Schedule(models.Model):
@@ -35,3 +36,4 @@ class Schedule(models.Model):
 
     class Meta:
         ordering = ["start_date", "start_time"]
+        db_table = "schedules"

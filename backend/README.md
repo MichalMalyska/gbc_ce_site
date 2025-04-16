@@ -57,7 +57,7 @@ The API will be available at `http://localhost:8000/api/`
 
 ## Project Structure
 
-```
+```bash
 course_api/
   ├── courses/       # Main app
   │   ├── models.py    # Database models
@@ -100,11 +100,3 @@ sudo mv .env.production /etc/gbc-courses/
 sudo chown root:root /etc/gbc-courses/.env.production
 sudo chmod 600 /etc/gbc-courses/.env.production
 ```
-
-⚠️ Security Notes:
-
-- Never commit environment files to version control
-- Restrict access to production environment files
-- Regularly rotate database credentials
-- Use strong, unique passwords
-- Consider using a secrets management service for production
