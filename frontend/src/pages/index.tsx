@@ -98,10 +98,10 @@ export default function Home() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors">
+    <div className="min-h-screen bg-background text-foreground transition-colors">
       <main className="container mx-auto px-4 py-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-8">
-          <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white flex justify-between items-center">
+        <div className="bg-card dark:bg-card-dark rounded-lg shadow-sm p-6 mb-8">
+          <h1 className="text-3xl font-bold mb-6 text-card-foreground dark:text-card-foreground-dark flex justify-between items-center">
             GBC Course Catalog
             <div className="flex items-center gap-4">
               {isTestMode && (
@@ -129,26 +129,26 @@ export default function Home() {
 
         {/* Show initial message only if no filters are active AND no query params exist */}
         {!hasActiveFilters && Object.keys(router.query).length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-            <p className="text-gray-500 dark:text-gray-400">
+          <div className="text-center py-12 bg-card dark:bg-card-dark rounded-lg shadow-sm">
+            <p className="text-muted-foreground dark:text-muted-foreground-dark">
               Select a department or enter search terms to view courses
             </p>
           </div>
         ) : isLoading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent dark:border-accent-dark"></div>
           </div>
         ) : (
           <>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden mb-8">
+            <div className="bg-card dark:bg-card-dark rounded-lg shadow-sm overflow-hidden mb-8">
               {data?.results.map((course) => (
                 <CourseCard key={course.id} course={course} selectedDays={selectedDays} />
               ))}
             </div>
 
             {data?.results.length === 0 && (
-              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                <p className="text-gray-500 dark:text-gray-400">
+              <div className="text-center py-12 bg-card dark:bg-card-dark rounded-lg shadow-sm">
+                <p className="text-muted-foreground dark:text-muted-foreground-dark">
                   No courses found matching your criteria
                 </p>
               </div>

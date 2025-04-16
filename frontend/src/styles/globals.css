@@ -9,8 +9,9 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Using Tailwind slate palette for a softer dark theme */
+    --background: #0f172a; /* slate-900 */
+    --foreground: #e2e8f0; /* slate-200 */
   }
 }
 

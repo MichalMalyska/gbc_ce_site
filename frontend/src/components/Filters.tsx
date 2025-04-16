@@ -35,8 +35,8 @@ const DELIVERY_TYPES = [
   { label: 'On Campus', value: 'on campus' },
 ];
 
-const selectClassName = "mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white";
-const labelClassName = "text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+const selectClassName = "mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-accent focus:ring-accent focus:ring-opacity-50 bg-white dark:bg-slate-700 text-foreground dark:text-foreground-dark";
+const labelClassName = "text-sm font-medium text-muted-foreground dark:text-muted-foreground-dark mb-1";
 
 export function Filters({
   selectedDays,
@@ -70,13 +70,13 @@ export function Filters({
           {DAYS_OF_WEEK.map((day) => (
             <label
               key={day}
-              className="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750 p-1.5 rounded cursor-pointer"
+              className="flex items-center space-x-2 text-sm text-foreground dark:text-foreground-dark hover:bg-gray-100 dark:hover:bg-slate-700 p-1.5 rounded cursor-pointer"
             >
               <input
                 type="checkbox"
                 checked={selectedDays.includes(day)}
                 onChange={() => handleDayToggle(day)}
-                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                className="rounded border-gray-300 dark:border-slate-600 text-accent focus:ring-accent focus:ring-opacity-50 dark:bg-slate-700"
               />
               <span>{day}</span>
             </label>

@@ -100,25 +100,25 @@ export function CourseCard({ course, selectedDays }: CourseCardProps) {
   if (groupedSchedules.length === 0) return null;
 
   return (
-    <div className="px-4 py-3 bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750">
+    <div className="px-4 py-3 bg-card dark:bg-card-dark border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700">
       <div className="flex justify-between items-start gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-medium truncate">
+            <h3 className="text-base font-semibold">
               <a
                 href={course.course_link || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                className="text-accent dark:text-accent-dark hover:opacity-80"
               >
                 {course.course_code} - {course.course_name}
               </a>
             </h3>
             {getDeliveryTypeBadge(course.course_delivery_type)}
           </div>
-          <div className="mt-1 space-y-1">
+          <div className="mt-2 space-y-2">
             {groupedSchedules.map((scheduleGroup, index) => (
-              <div key={index} className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+              <div key={index} className="flex items-center text-sm text-muted-foreground dark:text-muted-foreground-dark">
                 <span className="w-24 flex-shrink-0">{formatDays(scheduleGroup)}</span>
                 {formatTimeDisplay(scheduleGroup[0])}
                 <span className="text-xs">
@@ -130,11 +130,11 @@ export function CourseCard({ course, selectedDays }: CourseCardProps) {
           </div>
         </div>
         <div className="flex-shrink-0 text-right">
-          <div className="text-sm font-medium text-gray-900 dark:text-gray-200">
+          <div className="text-sm font-medium text-foreground dark:text-foreground-dark">
             {course.fees}
           </div>
           {course.hours && (
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-xs text-muted-foreground dark:text-muted-foreground-dark">
               {course.hours} hours
             </div>
           )}
