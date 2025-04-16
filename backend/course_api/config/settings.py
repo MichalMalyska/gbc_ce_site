@@ -1,15 +1,23 @@
 from pathlib import Path
+import os
+import dj_database_url  # Import dj-database-url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-your-secret-key-here"
+
+# Read secret key from environment variable
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Read DEBUG status from environment variable (defaults to False)
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = []
+# Read allowed hosts from environment variable
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
+if not ALLOWED_HOSTS or ALLOWED_HOSTS == [""]:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]  # Default if not set
 
 # Application definition
 INSTALLED_APPS = [
@@ -55,12 +63,16 @@ TEMPLATES = [
 ]
 
 # Database
+# Configure database using DATABASE_URL environment variable
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.config(
+        default=os.environ.get("DATABASE_URL"),
+        conn_max_age=600,  # Optional: connection pooling
+    )
 }
+# Optional: Require SSL for Postgres in production
+# if DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql' and not DEBUG:
+#    DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -91,9 +103,15 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React frontend
-]
+# Read allowed origins from environment variable
+CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+if CORS_ALLOWED_ORIGINS == [""]:
+    CORS_ALLOWED_ORIGINS = []  # Default to empty list if not set
+
+# CSRF settings for HTTPS
+CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+if CSRF_TRUSTED_ORIGINS == [""]:
+    CSRF_TRUSTED_ORIGINS = []  # Default to empty list if not set
 
 # REST Framework settings
 REST_FRAMEWORK = {
