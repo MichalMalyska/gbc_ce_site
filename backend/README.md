@@ -3,6 +3,7 @@
 Django REST API for serving GBC continuing education course data.
 
 ## Features
+
 - Course listing and filtering
 - Schedule management
 - Pagination support
@@ -16,11 +17,13 @@ Django REST API for serving GBC continuing education course data.
 ## Getting Started
 
 ### Prerequisites
+
 - Python 3.8+
 - pip
 - virtualenv (recommended)
 
 ### Installation
+
 ```bash
 # Create and activate virtual environment
 python -m venv venv
@@ -44,6 +47,7 @@ The API will be available at `http://localhost:8000/api/`
 ### API Endpoints
 
 #### Courses
+
 - `GET /api/courses/`
   - Query Parameters:
     - `search`: Search in course code and name
@@ -54,10 +58,12 @@ The API will be available at `http://localhost:8000/api/`
     - `has_schedules`: Only show courses with schedules
 
 #### Course Prefixes
+
 - `GET /api/courses/prefixes/`
   - Returns list of unique course prefixes
 
 ## Project Structure
+
 ```
 course_api/
   ├── courses/       # Main app
@@ -68,6 +74,7 @@ course_api/
 ```
 
 ## Data Model
+
 - Course
   - Basic course information
   - Delivery type
@@ -80,16 +87,19 @@ course_api/
 ## Environment Setup
 
 1. Create a production environment file:
+
 ```bash
 cp .env.example .env.production
 ```
 
 2. Edit the production environment file with your secure credentials:
+
 ```bash
 nano .env.production
 ```
 
 3. Store the environment file in a secure location:
+
 ```bash
 # Example: move to a restricted directory
 sudo mkdir -p /etc/gbc-courses
@@ -99,6 +109,7 @@ sudo chmod 600 /etc/gbc-courses/.env.production
 ```
 
 ⚠️ Security Notes:
+
 - Never commit environment files to version control
 - Restrict access to production environment files
 - Regularly rotate database credentials

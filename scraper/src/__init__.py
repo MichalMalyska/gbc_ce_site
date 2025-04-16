@@ -1,0 +1,1 @@
+"""Course scraping package."""

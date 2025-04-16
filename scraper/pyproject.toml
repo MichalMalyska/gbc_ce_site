@@ -1,10 +1,11 @@
 [project]
-name = "gbc-scrape"
+name = "scraper"
 version = "1.0"
 description = "Scrape George Brown College courses and programs"
 authors = [{ name = "Michal Malyska", email = "malyskamichal@gmail.com" }]
 requires-python = ">=3.11,<3.14"
 readme = "README.md"
+
 
 [dependency-groups]
 dev = [
@@ -17,7 +18,7 @@ dev = [
 
 line-length = 120
 indent-width = 4
-target-version = "py313"
+target-version = "py311"
 
 [tool.ruff.lint]
 fixable = ["ALL"]
