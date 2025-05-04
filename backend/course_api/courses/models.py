@@ -9,7 +9,7 @@ class Course(models.Model):
     course_delivery_type = models.CharField(max_length=50, null=True, blank=True)
     prereqs = models.TextField(null=True, blank=True)
     hours = models.CharField(max_length=20, null=True, blank=True)
-    fees = models.CharField(max_length=50, null=True, blank=True)
+    fees = models.CharField(max_length=100, null=True, blank=True)
     course_description = models.TextField(null=True, blank=True)
     course_link = models.URLField(max_length=500, null=True, blank=True)
 
@@ -27,7 +27,7 @@ class Schedule(models.Model):
     )
     start_date = models.DateField()
     end_date = models.DateField()
-    day_of_week = models.CharField(max_length=50)
+    day_of_week = models.CharField(max_length=100)
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
 
