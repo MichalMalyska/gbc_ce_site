@@ -8,9 +8,9 @@ from sqlalchemy.orm import relationship, sessionmaker
 load_dotenv()
 
 # Get database URL from environment variable
-DATABASE_URL = os.getenv("DB_URI")
+DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL is None:
-    raise ValueError("DB_URI environment variable is not set")
+    raise ValueError("DATABASE_URL environment variable is not set")
 
 # Create SQLAlchemy engine
 engine = create_engine(DATABASE_URL)

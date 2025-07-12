@@ -152,6 +152,9 @@ def load_course_data(json_dir: str, test_mode: bool = False):
         schedules_added = 0
         errors = 0
 
+        # Create a set to track course codes that have been added in the current session
+        added_course_codes = set()
+
         for json_file in json_files:
             try:
                 with open(json_file, "r") as f:
@@ -173,6 +176,13 @@ def load_course_data(json_dir: str, test_mode: bool = False):
                     )
                     logger.warning(f"Skipping {json_file.name} - invalid course code")
                     errors += 1
+                    continue
+
+                # Check for duplicates within the batch
+                if course_code in added_course_codes:
+                    logger.warning(
+                        f"Skipping duplicate course in batch: {course_code}"
+                    )
                     continue
 
                 # Create course
@@ -210,6 +220,7 @@ def load_course_data(json_dir: str, test_mode: bool = False):
                             schedules_added += 1
 
                 db.add(course)
+                added_course_codes.add(course.course_code)
                 courses_added += 1
 
                 # Commit every 100 courses (or every course in test mode)
@@ -256,32 +267,31 @@ def load_course_data(json_dir: str, test_mode: bool = False):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--test", action="store_true", help="Run in test mode with only 5 files")
+    parser = argparse.ArgumentParser(
+        description="Load course data from JSON files into the database. "
+        "WARNING: This script will drop and recreate existing tables."
+    )
     parser.add_argument(
-        "--reprocess",
+        "--json-dir",
+        type=str,
+        help="Directory containing JSON files.",
+        default=str(Path(__file__).parent.parent.parent / "data" / "json_all"),
+    )
+    parser.add_argument(
+        "--test",
         action="store_true",
-        help="Reprocess courses with missing schedules",
+        help="Run in test mode, processing only a few files.",
     )
     args = parser.parse_args()
 
-    # Load data from JSON files
-    json_dir = str(Path(__file__).parent.parent.parent / "data" / "course_data")
+    logger.info("=" * 50)
+    logger.info("Starting data loading script")
+    logger.warning("This script will drop and recreate the database tables.")
+    logger.info(f"Loading from: {args.json_dir}")
+    if args.test:
+        logger.info("RUNNING IN TEST MODE")
+    logger.info("=" * 50)
 
-    if args.reprocess:
-        # Just reprocess courses with missing schedules
-        from python_scrape.scrape import reprocess_course_schedules
+    load_course_data(json_dir=args.json_dir, test_mode=args.test)
 
-        for json_file in Path(json_dir).glob("*.json"):
-            with open(json_file) as f:
-                data = json.load(f)
-                if data.get("course_sections") and not data.get("schedules"):
-                    logger.info(f"Reprocessing {data['course_code']}")
-                    updated_data = reprocess_course_schedules(data)
-                    if updated_data.get("schedules"):
-                        with open(json_file, "w") as f:
-                            json.dump(updated_data, f)
-                            logger.info(f"Updated schedules for {data['course_code']}")
-    else:
-        # Normal load process
-        load_course_data(json_dir, test_mode=args.test)
+    logger.info("Data loading process finished.")

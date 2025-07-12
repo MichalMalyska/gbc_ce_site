@@ -4,7 +4,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DATA_PATH = Path(__file__).parent.parent / "data"
+DATA_PATH = Path(__file__).parent.parent.parent / "data"
 
 
 def clean_courses():

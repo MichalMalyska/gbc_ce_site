@@ -9,21 +9,21 @@ from bs4 import BeautifulSoup
 from tenacity import retry, stop_after_attempt, wait_exponential
 from tqdm import tqdm
 
-from python_scrape.cerebras_extract_dates import cerebras_clean_response, cerebras_extract_dates  # noqa
-from python_scrape.cohere_extract_dates import cohere_clean_response, cohere_extract_dates  # noqa
-from python_scrape.constants import MAIN_PAGE_URL
-from python_scrape.filters import filter_courses
-from python_scrape.utils import load_processed_courses, save_processed_courses
+from .cerebras_extract_dates import cerebras_clean_response, cerebras_extract_dates  # noqa
+from .cohere_extract_dates import cohere_clean_response, cohere_extract_dates  # noqa
+from .constants import MAIN_PAGE_URL
+from .filters import filter_courses
+from .utils import load_processed_courses, save_processed_courses
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    filename=Path(__file__).parent / "logs" / "scrape.log",
+    filename=Path(__file__).parent.parent / "logs" / "scrape.log",
 )
 logger = logging.getLogger()
 
-DATA_PATH = Path(__file__).parent.parent / "data"
+DATA_PATH = Path(__file__).parent.parent.parent / "data"
 
 
 def extract_programs_from_main_page(main_site_link: str) -> set[str]:
@@ -533,7 +533,7 @@ def main():
     # Continue with course data scraping
     course_data = scrape_course_data(DATA_PATH / "courses.txt")
     save_course_data_to_file(course_data)
-    course_data, processed = extract_dates_from_course_data(course_data, resume=True)
+    course_data, processed = extract_dates_from_course_data(course_data, resume=False)
     save_course_data_to_file(course_data)
     logger.info(f"Processed {len(processed)} courses")
 
