@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from sqlalchemy import Column, Date, ForeignKey, Integer, String, Time, create_engine
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, Time, create_engine, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
@@ -33,9 +33,10 @@ class Course(Base):
     fees = Column(String)
     course_description = Column(String)
     course_link = Column(String)
+    last_seen_at = Column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
     # Relationship with schedules
-    schedules = relationship("Schedule", back_populates="course")
+    schedules = relationship("Schedule", back_populates="course", cascade="all, delete-orphan")
 
 
 class Schedule(Base):
@@ -56,6 +57,7 @@ class Schedule(Base):
 # Create all tables
 def init_db():
     Base.metadata.create_all(engine)
+    ensure_course_last_seen_column()
 
 
 # Create session factory
@@ -75,3 +77,22 @@ def drop_and_recreate_tables():
     """Drop all tables and recreate them"""
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+
+
+def ensure_course_last_seen_column():
+    """Add the last_seen_at column for existing databases that predate the incremental sync path."""
+    inspector = inspect(engine)
+    if "courses" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("courses")}
+    if "last_seen_at" in columns:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE courses "
+                "ADD COLUMN last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL"
+            )
+        )
