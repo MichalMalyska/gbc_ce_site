@@ -48,12 +48,17 @@ def cohere_extract_dates(course_sections: list[str]):
             {{
                 "start_date": "YYYY-MM-DD",
                 "end_date": "YYYY-MM-DD",
-                "day_or_days_of_week": "Full day names",
+                "day_or_days_of_week": "Comma-separated full weekday names in Monday-Sunday order, or an empty string for self-paced/flexible/full-day schedules",
                 "start_time": "HH:MM AM/PM",
                 "end_time": "HH:MM AM/PM"
             }}
         ]
     }}
+
+    Rules:
+    - Use only full weekday names such as "Monday" or "Tuesday, Thursday".
+    - Never use abbreviations such as "Mon", "Tu", "Th", "M-F", or placeholders like "Full day".
+    - If the schedule is self-directed, self-paced, flexible, full-day, or otherwise does not map to weekdays, return "".
 
     Input text:
     {course_sections}

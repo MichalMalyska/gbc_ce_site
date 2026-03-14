@@ -2,7 +2,24 @@ import json
 from datetime import time
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import or_
+
+from src.schedule_utils import DAY_ORDER, DayOfWeekNormalizationError, normalize_day_filter_tokens
+
 from .database import Course, Schedule, SessionLocal
+
+
+def _normalize_requested_days(day_values: List[str]) -> List[str]:
+    normalized_days: list[str] = []
+    for day_value in day_values:
+        normalized_days.extend(normalize_day_filter_tokens(day_value))
+
+    normalized_day_set = set(normalized_days)
+    return [day for day in DAY_ORDER if day in normalized_day_set]
+
+
+def _day_filter_clause(days: List[str]):
+    return or_(*[Schedule.day_of_week.ilike(f"%{day}%") for day in days])
 
 
 def get_courses_by_filters(
@@ -25,7 +42,14 @@ def get_courses_by_filters(
         query = db.query(Course).join(Course.schedules)
 
         if day_of_week:
-            query = query.filter(Schedule.day_of_week.ilike(f"%{day_of_week}%"))
+            try:
+                requested_days = _normalize_requested_days([day_of_week])
+            except DayOfWeekNormalizationError:
+                return []
+
+            if not requested_days:
+                return []
+            query = query.filter(_day_filter_clause(requested_days))
 
         if start_time_after:
             query = query.filter(Schedule.start_time >= start_time_after)
@@ -166,6 +190,14 @@ def get_evening_courses_by_days_json(
     """
     db = SessionLocal()
     try:
+        try:
+            normalized_days = _normalize_requested_days(days)
+        except DayOfWeekNormalizationError:
+            return json.dumps([], indent=2)
+
+        if not normalized_days:
+            return json.dumps([], indent=2)
+
         courses = (
             db.query(Course)
             .join(Course.schedules)
@@ -174,13 +206,7 @@ def get_evening_courses_by_days_json(
                 Course.course_delivery_type == "On Campus",
                 Schedule.start_time >= after_time,
             )
-            .filter(
-                # Match any of the specified days
-                Schedule.day_of_week.ilike(f"%{days[0]}%")
-                if len(days) == 1
-                # Use OR for multiple days
-                else Schedule.day_of_week.ilike(f"%{days[0]}%") | Schedule.day_of_week.ilike(f"%{days[1]}%")
-            )
+            .filter(_day_filter_clause(normalized_days))
             .distinct()
             .order_by(Course.course_number)
             .all()
@@ -220,6 +246,14 @@ def get_evening_courses_summary_json(
     """
     db = SessionLocal()
     try:
+        try:
+            normalized_days = _normalize_requested_days(days)
+        except DayOfWeekNormalizationError:
+            return json.dumps([], indent=2)
+
+        if not normalized_days:
+            return json.dumps([], indent=2)
+
         courses = (
             db.query(Course)
             .join(Course.schedules)
@@ -228,11 +262,7 @@ def get_evening_courses_summary_json(
                 Course.course_delivery_type == "On Campus",
                 Schedule.start_time >= after_time,
             )
-            .filter(
-                Schedule.day_of_week.ilike(f"%{days[0]}%")
-                if len(days) == 1
-                else Schedule.day_of_week.ilike(f"%{days[0]}%") | Schedule.day_of_week.ilike(f"%{days[1]}%")
-            )
+            .filter(_day_filter_clause(normalized_days))
             .distinct()
             .order_by(Course.course_number)
             .all()
@@ -251,7 +281,7 @@ def get_evening_courses_summary_json(
                 }
                 for schedule in course.schedules
                 if schedule.start_time >= after_time
-                and any(day.lower() in schedule.day_of_week.lower() for day in days)
+                and any(day in schedule.day_of_week for day in normalized_days)
             ]
 
             if matching_schedules:  # Only include if there are matching schedules

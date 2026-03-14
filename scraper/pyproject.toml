@@ -16,6 +16,7 @@ dependencies = [
     "cerebras-cloud-sdk>=0.1.0",
     "cohere>=4.0.0",
     "pydantic>=2.0.0",
+    "tqdm"
 ]
 
 
