@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from .schedule_utils import DayOfWeekNormalizationError, normalize_day_filter_tokens
+
 
 def filter_courses_by_subject(courses: List[Dict[str, Any]], subject: str) -> List[Dict[str, Any]]:
     """Filter courses by subject keyword in course code or name"""
@@ -15,7 +17,13 @@ def filter_courses_by_subject(courses: List[Dict[str, Any]], subject: str) -> Li
 def filter_courses_by_day(courses: List[Dict[str, Any]], day: str) -> List[Dict[str, Any]]:
     """Filter courses by specific day of the week"""
     filtered_courses = []
-    day = day.lower()
+    try:
+        requested_days = set(normalize_day_filter_tokens(day))
+    except DayOfWeekNormalizationError:
+        return []
+
+    if not requested_days:
+        return []
 
     for course in courses:
         schedules = course.get("schedules", [])
@@ -24,8 +32,13 @@ def filter_courses_by_day(courses: List[Dict[str, Any]], day: str) -> List[Dict[
 
         for schedule in schedules:
             if isinstance(schedule, dict):
-                days = schedule.get("day_or_days_of_week", "").lower()
-                if day in days:
+                raw_days = schedule.get("day_or_days_of_week") or schedule.get("day_of_week") or ""
+                try:
+                    schedule_days = set(normalize_day_filter_tokens(raw_days))
+                except DayOfWeekNormalizationError:
+                    continue
+
+                if requested_days & schedule_days:
                     filtered_courses.append(course)
                     break
 
