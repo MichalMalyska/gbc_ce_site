@@ -13,6 +13,7 @@ from .cerebras_extract_dates import cerebras_clean_response, cerebras_extract_da
 from .cohere_extract_dates import cohere_clean_response, cohere_extract_dates  # noqa
 from .constants import MAIN_PAGE_URL
 from .filters import filter_courses
+from .schedule_utils import normalize_course_schedule_payload, save_invalid_schedule_report
 from .utils import load_processed_courses, save_processed_courses
 
 # Configure logging
@@ -24,6 +25,15 @@ logging.basicConfig(
 logger = logging.getLogger()
 
 DATA_PATH = Path(__file__).parent.parent.parent / "data"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:145.0) Gecko/20100101 Firefox/145.0",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+}
 
 
 def extract_programs_from_main_page(main_site_link: str) -> set[str]:
@@ -37,7 +47,10 @@ def extract_programs_from_main_page(main_site_link: str) -> set[str]:
         set[str]: A set of unique program links
     """
     try:
-        response = requests.get(main_site_link)
+        response = requests.get(
+            main_site_link,
+            headers=HEADERS,
+        )
         soup = BeautifulSoup(response.text, "html.parser")
         programs = set()
         for link in tqdm(soup.find_all("a", href=True), desc="Extracting programs from main page"):
@@ -62,7 +75,7 @@ def check_programs_validity(programs: set[str]) -> tuple[set[str], list[requests
     for program in tqdm(programs, desc="Checking program links validity"):
         link = f"{MAIN_PAGE_URL}{program}"
         try:
-            response = requests.get(link)
+            response = requests.get(link, headers=HEADERS)
             if response.status_code == 200:
                 valid_programs.add(program)
                 responses.append(response)
@@ -290,7 +303,7 @@ def scrape_course_data(course_link_file_path: Path) -> list[dict[str, Any]]:
 
     def scrape_single_course(course_link):
         try:
-            response = requests.get(course_link)
+            response = requests.get(course_link, headers=HEADERS)
             if response.status_code != 200:
                 logger.warning(f"Invalid course link: {course_link}")
                 return None
@@ -391,13 +404,14 @@ def clean_invalid_courses(course_data: list[dict[str, Any]]) -> list[dict[str, A
 
 
 def extract_dates_from_course_data(
-    course_data: list[dict[str, Any]], resume: bool = True
+    course_data: list[dict[str, Any]], resume: bool = True, invalid_schedules: Optional[list[dict[str, Any]]] = None
 ) -> Tuple[list[dict[str, Any]], Set[str]]:
     """
     Extract dates from course data with resume capability and rate limiting
     """
     # Clean invalid courses first
     course_data = clean_invalid_courses(course_data)
+    invalid_schedules = invalid_schedules if invalid_schedules is not None else []
 
     processed_courses = load_processed_courses(DATA_PATH) if resume else set()
     logger.info(f"Starting with {len(processed_courses)} previously processed courses")
@@ -433,9 +447,18 @@ def extract_dates_from_course_data(
         if extracted_schedules:
             cleaned_schedules = cerebras_clean_response(extracted_schedules)  # type: ignore
             course["schedules"] = cleaned_schedules
-            course["cleaned_response_schedules"] = json.dumps({"schedules": cleaned_schedules})
+            invalid_schedules.extend(
+                normalize_course_schedule_payload(
+                    course,
+                    context="scrape_extract",
+                    source_file=f"{course_code} - {course.get('course_name', '')}.json",
+                )
+            )
             logger.debug(f"Successfully extracted schedules using Cerebras for {course_code}")
-            processed_with_schedules += 1
+            if course["schedules"]:
+                processed_with_schedules += 1
+            else:
+                processed_without_schedules += 1
         else:
             # Fallback to Cohere
             cohere_response = try_extract_dates(course["course_sections"], service="cohere")
@@ -447,8 +470,18 @@ def extract_dates_from_course_data(
                     cleaned_schedules = json.loads(cleaned_response)
                     if isinstance(cleaned_schedules, dict) and "schedules" in cleaned_schedules:
                         course["schedules"] = cleaned_schedules["schedules"]
+                        invalid_schedules.extend(
+                            normalize_course_schedule_payload(
+                                course,
+                                context="scrape_extract",
+                                source_file=f"{course_code} - {course.get('course_name', '')}.json",
+                            )
+                        )
                         logger.debug(f"Successfully extracted schedules using Cohere for {course_code}")
-                        processed_with_schedules += 1
+                        if course["schedules"]:
+                            processed_with_schedules += 1
+                        else:
+                            processed_without_schedules += 1
                     else:
                         logger.debug(f"Invalid schedule format for {course_code}")
                         course["schedules"] = []
@@ -474,6 +507,7 @@ def extract_dates_from_course_data(
 
     # Save final state
     save_processed_courses(DATA_PATH, processed_courses)
+    save_invalid_schedule_report(invalid_schedules)
     logger.info(
         f"Completed processing {len(processed_courses)} courses:\n"
         f"- {no_sections} courses had no sections to process\n"
@@ -483,7 +517,7 @@ def extract_dates_from_course_data(
     return course_data, processed_courses
 
 
-def main():
+def main(force: bool = False):
     # make sure the data directory exists
     if not DATA_PATH.exists():
         DATA_PATH.mkdir(parents=True, exist_ok=True)
@@ -491,18 +525,17 @@ def main():
 
     # Create required subdirectories
     ensure_data_directories()
-
     # Check if we already have course data
     existing_courses = list(DATA_PATH.glob("course_data/*.json"))
-    if existing_courses:
+    if existing_courses and not force:
         logger.info(f"Found {len(existing_courses)} existing course files")
-        if input("Course data already exists. Do you want to re-scrape? (y/N): ").lower() != "y":
-            logger.info("Skipping scrape, using existing course data")
-            course_data = load_course_data()
-            course_data, processed = extract_dates_from_course_data(course_data, resume=True)
-            save_course_data_to_file(course_data)
-            logger.info(f"Processed {len(processed)} courses")
-            return
+        logger.info("Skipping re-scrape because course data already exists. Use force=True or --force to overwrite.")
+        invalid_schedules: list[dict[str, Any]] = []
+        course_data = load_course_data(invalid_schedules=invalid_schedules)
+        course_data, processed = extract_dates_from_course_data(course_data, resume=True, invalid_schedules=invalid_schedules)
+        save_course_data_to_file(course_data)
+        logger.info(f"Processed {len(processed)} courses")
+        return
 
     # Check if we need to scrape or can use existing raw links
     raw_links_path = DATA_PATH / "raw_courses.txt"
@@ -551,7 +584,11 @@ def ensure_data_directories():
         logger.info(f"Ensured directory exists: {directory}")
 
 
-def load_course_data(course_code: Optional[str] = None, test_mode: bool = False) -> list[dict[str, Any]]:
+def load_course_data(
+    course_code: Optional[str] = None,
+    test_mode: bool = False,
+    invalid_schedules: Optional[list[dict[str, Any]]] = None,
+) -> list[dict[str, Any]]:
     """
     Load the course data from the files.
     """
@@ -580,7 +617,15 @@ def load_course_data(course_code: Optional[str] = None, test_mode: bool = False)
     for file in files_to_process:
         try:
             with open(DATA_PATH / "course_data" / file, "r") as f:
-                course_data.append(json.load(f))
+                course = json.load(f)
+                course_invalid_schedules = normalize_course_schedule_payload(
+                    course,
+                    context="scrape_json_load",
+                    source_file=file,
+                )
+                if invalid_schedules is not None:
+                    invalid_schedules.extend(course_invalid_schedules)
+                course_data.append(course)
         except Exception as e:
             logger.error(f"Error loading {file}: {e}")
             continue
@@ -616,6 +661,7 @@ def reprocess_course_schedules(course_data: dict) -> dict:
     if not course_data.get("course_sections"):
         return course_data
 
+    invalid_schedules: list[dict[str, Any]] = []
     try:
         # Try Cerebras first
         extracted_schedules = try_extract_dates(course_data["course_sections"], service="cerebras")
@@ -623,7 +669,13 @@ def reprocess_course_schedules(course_data: dict) -> dict:
         if extracted_schedules:
             cleaned_schedules = cerebras_clean_response(extracted_schedules)  # type: ignore
             course_data["schedules"] = cleaned_schedules
-            course_data["cleaned_response_schedules"] = json.dumps({"schedules": cleaned_schedules})
+            invalid_schedules.extend(
+                normalize_course_schedule_payload(
+                    course_data,
+                    context="scrape_reprocess",
+                    source_file=f"{course_data.get('course_code', '')} - {course_data.get('course_name', '')}.json",
+                )
+            )
         else:
             # Fallback to Cohere
             cohere_response = try_extract_dates(course_data["course_sections"], service="cohere")
@@ -634,10 +686,18 @@ def reprocess_course_schedules(course_data: dict) -> dict:
                 cleaned_schedules = json.loads(cleaned_response)
                 if isinstance(cleaned_schedules, dict) and "schedules" in cleaned_schedules:
                     course_data["schedules"] = cleaned_schedules["schedules"]
+                    invalid_schedules.extend(
+                        normalize_course_schedule_payload(
+                            course_data,
+                            context="scrape_reprocess",
+                            source_file=f"{course_data.get('course_code', '')} - {course_data.get('course_name', '')}.json",
+                        )
+                    )
 
     except Exception as e:
         logger.error(f"Error reprocessing schedules for {course_data.get('course_code')}: {e}")
 
+    save_invalid_schedule_report(invalid_schedules)
     return course_data
 
 
@@ -660,10 +720,11 @@ if __name__ == "__main__":
                 logger.info("Use --force to re-scrape")
                 exit(0)
             # Run the full scraping process
-            main()
+            main(force=args.force)
         else:
             # Just process existing data
-            course_data = load_course_data(test_mode=args.test)
+            invalid_schedules: list[dict[str, Any]] = []
+            course_data = load_course_data(test_mode=args.test, invalid_schedules=invalid_schedules)
             if not course_data:
                 logger.error("No course data found. Try running with --scrape to get course data first")
                 exit(1)
@@ -671,11 +732,10 @@ if __name__ == "__main__":
             updated_data, processed = extract_dates_from_course_data(
                 course_data,
                 resume=True,
+                invalid_schedules=invalid_schedules,
             )
             save_course_data_to_file(updated_data)
             logger.info(f"Processed {len(processed)} courses")
     except Exception as e:
         logger.error(f"Error: {e}")
-        import pdb
-
-        pdb.post_mortem()
+        raise
